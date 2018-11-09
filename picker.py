@@ -9,8 +9,9 @@ def pick(numpicked:int,df:pd.DataFrame, spatialAxes=[], timeAxis="", numAttris=[
     #DataFrame is necessary, other is not necessary
     #if not used, leave it as [] or just skip it
     #only supported one time axis. other attributes
-
+    df=df.copy()
     #configurations of significance
+
     spatialSig=0.35
     timeSig=0.1
     stSig=0
@@ -30,6 +31,8 @@ def pick(numpicked:int,df:pd.DataFrame, spatialAxes=[], timeAxis="", numAttris=[
 
     #if we can store all points,return the dataframe
     if df.shape[0]<numpicked:
+        print("picked " + str(df.shape[0]) + " points from "
+              + str(df.shape[0]) + "points ,and preserved 100% of information")
         return df
 
     # #numpicked should at least larger than maWindow
@@ -131,7 +134,7 @@ def pick(numpicked:int,df:pd.DataFrame, spatialAxes=[], timeAxis="", numAttris=[
         tmpvalue=dscSig/dscLen
         score['descriptionAttributes']=dscC.apply(lambda x:x.sum()*tmpvalue,axis=1)
 
-    print("score is \n"+str(score))
+    #print("score is \n"+str(score))
     #todo:don't pick two points when they are too near
     #hint:get 10 more points and calculate distance, and then
     #remove the 10 minist distance
@@ -140,14 +143,15 @@ def pick(numpicked:int,df:pd.DataFrame, spatialAxes=[], timeAxis="", numAttris=[
     picked=totalSorted[0:numpicked-2]
     picked=picked.append(df[:1]).append(df[-1:])\
         .sort_values('BaseDateTime').reset_index(drop=True)
-    print(picked)
+    #print(picked)
     info=picked['totalScore'].sum()/totalSorted['totalScore'].sum()
     print("picked "+str(numpicked)+" points from "
           +str(df.shape[0])+"points ,and preserved "+format(info, '.0%')+" of information")
     return picked
 
 
-def test(df:pd.DataFrame):
+def test(df:pd.DataFrame,id:int):
+    df=df.copy()
     df.loc[:,["BaseDateTime"]] = df["BaseDateTime"].apply(
         lambda x: int(time.mktime(time.strptime(x, "%Y-%m-%dT%H:%M:%S")))
     )
@@ -155,11 +159,13 @@ def test(df:pd.DataFrame):
     timeAxis = "BaseDateTime"
     numAttris = ["SOG", "COG", "Heading", "Length", "Width", "Draft", "Cargo"]
     dscAttris = ["VesselName", "IMO", "CallSign", "VesselType", "Status"]
-    picked = pick(10, df, spatialAxes, timeAxis, numAttris, dscAttris)
+    picked = pick(int(max(10,df.shape[0]/20)), df, spatialAxes, timeAxis, numAttris, dscAttris)
     tmpdf = df.sort_values("BaseDateTime")[["LON", "LAT"]]
     plt.figure(1)
+    plt.title(str(id)+"ori")
     plt.scatter(tmpdf["LON"], tmpdf["LAT"], marker=".")
     plt.figure(2)
+    plt.title(str(id)+"pkd")
     plt.scatter(picked["LON"], picked["LAT"], marker=".")
     plt.show()
 
