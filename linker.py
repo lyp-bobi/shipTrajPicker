@@ -14,8 +14,9 @@ dscAttris=["VesselName","IMO","CallSign","VesselType","Status"]
 for name,group in grouped:
     print(group)
     i+=1
-    picker.pick(100,group,spatialAxes,timeAxis,numAttris,dscAttris)
-    if i>2:
+    picker.test(group)
+    #picker.pick(100,group,spatialAxes,timeAxis,numAttris,dscAttris)
+    if i>20:
         break
 
     #output as .csv, DON'T use this line while not testing!

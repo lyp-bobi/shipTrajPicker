@@ -4,6 +4,7 @@ import time, datetime
 import matplotlib.pyplot as plt
 import matplotlib
 
+
 def pick(numpicked:int,df:pd.DataFrame, spatialAxes=[], timeAxis="", numAttris=[], dscAttris=[]):
     #DataFrame is necessary, other is not necessary
     #if not used, leave it as [] or just skip it
@@ -15,8 +16,9 @@ def pick(numpicked:int,df:pd.DataFrame, spatialAxes=[], timeAxis="", numAttris=[
     stSig=0
     numSig=0.35
     dscSig=0.2
-    #dynamic set maWindow the actual window size is maWindow*2
-    maWindow = int(max(df.shape[0]/40,20)/2)
+    #dynamic set maWindow between 20 and 100
+    #the actual window size is maWindow*2
+    maWindow = int(min(100,max(df.shape[0]/40,20))/2)
     print("dynamical setted maWindow as "+str(maWindow))
 
 
@@ -30,10 +32,10 @@ def pick(numpicked:int,df:pd.DataFrame, spatialAxes=[], timeAxis="", numAttris=[
     if df.shape[0]<numpicked:
         return df
 
-    #numpicked should at least larger than maWindow
-    if numpicked<maWindow:
-        print("numpicked should at least larger than "+str(maWindow))
-        return df
+    # #numpicked should at least larger than maWindow
+    # if numpicked<maWindow:
+    #     print("numpicked should at least larger than "+str(maWindow))
+    #     return df
 
     #sort all data by time
     if timeAxis!="":
@@ -46,8 +48,11 @@ def pick(numpicked:int,df:pd.DataFrame, spatialAxes=[], timeAxis="", numAttris=[
     if spatialSig!=0:
         locC = df[spatialAxes].copy(deep=True)
         #extend it
-        zerodf = locC[0:maWindow].copy(deep=True)
+        zerodf = pd.DataFrame(columns=locC.columns)
+        for i in range(maWindow):
+            zerodf=zerodf.append(locC.head(1))
         zerodf[:]=0
+        #print(zerodf)
         locCExt = zerodf.append(locC).append(zerodf)
         ma=locCExt.rolling(maWindow,center=True).mean()[maWindow:-maWindow]
         prediction=ma
@@ -59,9 +64,11 @@ def pick(numpicked:int,df:pd.DataFrame, spatialAxes=[], timeAxis="", numAttris=[
         avSDiff=sDiffAbs.sum()/(sDiffAbs.shape[0]-maWindow)
         #print(avSDiff)
         #refill the first and last part as 2*avr
-        sDiffAbs[0:maWindow]=sDiffAbs[0:maWindow].apply(lambda x:2*avSDiff)
-        sDiffAbs[-maWindow:] = sDiffAbs[-maWindow:].apply(lambda x: 2 * avSDiff)
-
+        if df.shape[0]>maWindow:
+            sDiffAbs[0:maWindow]=sDiffAbs[0:maWindow].apply(lambda x:2*avSDiff)
+            sDiffAbs[-maWindow:] = sDiffAbs[-maWindow:].apply(lambda x: 2 * avSDiff)
+        else:
+            sDiffAbs[:]=1
         tmpvalue=spatialSig/avSDiff
         score['spatial']=sDiffAbs.apply(lambda x:x*tmpvalue)
 
@@ -140,21 +147,23 @@ def pick(numpicked:int,df:pd.DataFrame, spatialAxes=[], timeAxis="", numAttris=[
     return picked
 
 
-
-if __name__ == '__main__':
-    df=pd.read_csv("43676060.csv")
-    #df=pd.read_csv("205700000.csv")
-    df["BaseDateTime"] = df["BaseDateTime"].apply(
+def test(df:pd.DataFrame):
+    df.loc[:,["BaseDateTime"]] = df["BaseDateTime"].apply(
         lambda x: int(time.mktime(time.strptime(x, "%Y-%m-%dT%H:%M:%S")))
     )
     spatialAxes = ["LON", "LAT"]
     timeAxis = "BaseDateTime"
     numAttris = ["SOG", "COG", "Heading", "Length", "Width", "Draft", "Cargo"]
     dscAttris = ["VesselName", "IMO", "CallSign", "VesselType", "Status"]
-    picked=pick(100, df, spatialAxes, timeAxis, numAttris, dscAttris)
-    tmpdf=df.sort_values("BaseDateTime")[["LON","LAT"]]
+    picked = pick(10, df, spatialAxes, timeAxis, numAttris, dscAttris)
+    tmpdf = df.sort_values("BaseDateTime")[["LON", "LAT"]]
     plt.figure(1)
-    plt.scatter(tmpdf["LON"],tmpdf["LAT"],marker=".")
+    plt.scatter(tmpdf["LON"], tmpdf["LAT"], marker=".")
     plt.figure(2)
     plt.scatter(picked["LON"], picked["LAT"], marker=".")
     plt.show()
+
+if __name__ == '__main__':
+    df=pd.read_csv("43676060.csv")
+    #df=pd.read_csv("205700000.csv")
+    test(df)
